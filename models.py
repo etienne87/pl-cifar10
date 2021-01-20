@@ -31,7 +31,7 @@ class RepVGGBlock(nn.Module):
 
     def forward(self, x):
         weight = self._get_weight()
-        return F.conv2d(x, weight, self.bias, self.stride, 1)
+        return F.relu(F.conv2d(x, weight, self.bias, self.stride, 1))
 
 
 
