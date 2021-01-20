@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as f
 
 
 class RepVGGBlock(nn.Module):
@@ -30,7 +29,7 @@ class RepVGGBlock(nn.Module):
 
     def forward(self, x):
         weight = self._get_weight()
-        return f.conv2d(x, weight, self.bias, self.stride, 1)
+        return F.conv2d(x, weight, self.bias, self.stride, 1)
 
 
 
