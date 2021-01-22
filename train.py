@@ -55,18 +55,20 @@ class ClassificationModel(pl.LightningModule) :
         self.log_dict({'test_loss': loss, 'test_acc': acc})
 
     def configure_optimizers(self):
-        optimizer = torch.optim.SGD(self.parameters(), lr=self.hparams.lr, momentum=0.9, weight_decay=5e-4)
-        return {
-            'optimizer': optimizer,
-            'lr_scheduler': {
-                'scheduler': torch.optim.lr_scheduler.OneCycleLR(
-                    optimizer,
-                    0.1,
-                    epochs=self.trainer.max_epochs,
-                    steps_per_epoch=math.ceil(45000 / self.hparams.batch_size)),
-                'interval': 'step',
-            }
-        }
+        opt = torch.optim.Adam(self.model.parameters(), lr=self.hparams.lr)
+        return opt
+        # optimizer = torch.optim.SGD(self.parameters(), lr=self.hparams.lr, momentum=0.9, weight_decay=5e-4)
+        # return {
+        #     'optimizer': optimizer,
+        #     'lr_scheduler': {
+        #         'scheduler': torch.optim.lr_scheduler.OneCycleLR(
+        #             optimizer,
+        #             0.1,
+        #             epochs=self.trainer.max_epochs,
+        #             steps_per_epoch=math.ceil(45000 / self.hparams.batch_size)),
+        #         'interval': 'step',
+        #     }
+        # }
 
 
 
