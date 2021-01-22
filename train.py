@@ -5,6 +5,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import transforms 
 import pytorch_lightning as pl
 import torchvision
 
@@ -35,8 +36,7 @@ class ClassificationModel(pl.LightningModule) :
 
     def _evaluate(self, batch, batch_idx, stage=None):
         x, y = batch
-        out = self.forward(x)
-        logits = F.log_softmax(out, dim=-1)
+        logits = self.forward(x)
         loss = F.nll_loss(logits, y)
         preds = torch.argmax(logits, dim=-1)
         acc = accuracy(preds, y)
@@ -55,22 +55,35 @@ class ClassificationModel(pl.LightningModule) :
         self.log_dict({'test_loss': loss, 'test_acc': acc})
 
     def configure_optimizers(self):
-        opt = torch.optim.Adam(self.model.parameters(), lr=self.hparams.lr)
-        return opt
-        # optimizer = torch.optim.SGD(self.parameters(), lr=self.hparams.lr, momentum=0.9, weight_decay=5e-4)
-        # return {
-        #     'optimizer': optimizer,
-        #     'lr_scheduler': {
-        #         'scheduler': torch.optim.lr_scheduler.OneCycleLR(
-        #             optimizer,
-        #             0.1,
-        #             epochs=self.trainer.max_epochs,
-        #             steps_per_epoch=math.ceil(45000 / self.hparams.batch_size)),
-        #         'interval': 'step',
-        #     }
-        # }
+        #opt = torch.optim.Adam(self.model.parameters(), lr=self.hparams.lr)
+        #return opt
+        optimizer = torch.optim.SGD(self.parameters(), lr=self.hparams.lr, momentum=0.9, weight_decay=5e-4)
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': {
+                'scheduler': torch.optim.lr_scheduler.OneCycleLR(
+                    optimizer,
+                    0.1,
+                    epochs=self.trainer.max_epochs,
+                    steps_per_epoch=math.ceil(45000 / self.hparams.batch_size)),
+                'interval': 'step',
+            }
+        }
 
 
+def show(dm):
+    from torchvision.utils import make_grid
+    from pl_bolts.transforms.dataset_normalizations import cifar10_normalization
+    import cv2
+
+    mean=[x / 255.0 for x in [125.3, 123.0, 113.9]]
+    std=[x / 255.0 for x in [63.0, 62.1, 66.7]]
+    unnormalize = lambda x: 255* ((x*std)+mean)
+    for x,y in dm.train_dataloader():
+        im = make_grid(x.cpu()).permute(1,2,0).contiguous().numpy()
+        im = unnormalize(im).astype(np.uint8)
+        cv2.imshow('im', im[...,::-1])
+        cv2.waitKey()
 
 
 
@@ -78,6 +91,23 @@ def main(train_dir, batch_size=128, lr=1e-3, num_workers=1):
     params = argparse.Namespace(**locals())
     model = ClassificationModel(params)
     dm = CIFAR10DataModule()
+
+    normalize = transforms.Normalize(
+            mean=[x / 255.0 for x in [125.3, 123.0, 113.9]],
+            std=[x / 255.0 for x in [63.0, 62.1, 66.7]],
+        )
+    dm.train_transforms = transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        normalize,
+    ])
+
+    dm.test_transforms = dm.val_transformrs = transforms.Compose([
+        transforms.ToTensor(),
+        normalize,
+    ])
+    # show(dm)
 
 
     ckpt_dir = os.path.join(train_dir, 'checkpoints')
